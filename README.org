@@ -7,5 +7,5 @@
      #+end_example
    + Run the script
      #+begin_example
-     nextflow run VEuPathDB/tRNAScan -with-trace -c  <config_file>
+     nextflow run VEuPathDB/tRNAScan -with-trace -c  <config_file> -r main
      #+end_example
