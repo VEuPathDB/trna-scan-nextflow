@@ -1,5 +1,5 @@
 FROM ubuntu:22.04
-MAINTAINER Rich Demko
+MAINTAINER rdemko2332@gmail.com
 WORKDIR /work
 
 RUN apt-get -qq update --fix-missing
