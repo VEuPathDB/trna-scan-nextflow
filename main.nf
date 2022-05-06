@@ -6,10 +6,10 @@ process tRNAscan {
     input:
     path 'subset.fa' from seq_qch
     output:
-    path 'subset.fa.scanned' into scanned_qch
+    path 'subset.scanned' into scanned_qch
         
     """
-    tRNAscan-SE subset.fa 
+    tRNAscan-SE subset.fa -o subset.scanned 
     """
 }
 
