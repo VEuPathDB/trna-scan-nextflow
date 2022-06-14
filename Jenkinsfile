@@ -8,6 +8,6 @@ node('centos8') {
 
   checkout scm
   builder.buildContainers([
-    [ name: 'tRNAScan' ]
+    [ name: 'trnascan' ]
   ])
 }
