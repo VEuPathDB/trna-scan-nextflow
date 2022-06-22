@@ -1,16 +1,16 @@
-nextflow.enable.dsl=1
-seq_qch = Channel.fromPath(params.inputFilePath).splitFasta( by:1, file:true  )
+nextflow.enable.dsl=2
 
 process tRNAscan {
-    
+    publishDir params.outputDir, mode: 'copy', saveAs: { filename -> params.outputFileName }
     input:
-    path 'subset.fa' from seq_qch
+    path 'subset.fa'
     output:
-    path 'subset.scanned' into scanned_qch
-        
+    path 'subset.scanned'
     """
     tRNAscan-SE subset.fa -o subset.scanned 
     """
 }
 
-results = scanned_qch.collectFile(storeDir: params.outputDir, name: params.outputFileName)
+workflow {
+  channel.fromPath(params.inputFilePath).splitFasta(by:1, file:true) | tRNAscan
+}
