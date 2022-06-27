@@ -1,16 +1,17 @@
 nextflow.enable.dsl=2
 
 process tRNAscan {
-    publishDir params.outputDir, mode: 'copy', saveAs: { filename -> params.outputFileName }
+    publishDir params.outputDir, mode: 'copy'
     input:
-    path 'subset.fa'
+    tuple val(id), val (sequence) 
     output:
-    path 'subset.scanned'
+    path '*.txt'
     """
-    tRNAscan-SE subset.fa -o subset.scanned 
+    echo -e '>$id\n$sequence' > subset.fa
+    tRNAscan-SE subset.fa -o "$id"_scanned.txt 
     """
 }
 
 workflow {
-  channel.fromPath(params.inputFilePath).splitFasta(by:1, file:true) | tRNAscan
+  channel.fromPath(params.inputFilePath).splitFasta(by:1, record: [id: true, sequence: true]) | tRNAscan
 }
