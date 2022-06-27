@@ -23,7 +23,7 @@ process addHeader {
 }
 
 workflow {
-  seqs = channel.fromPath(params.inputFilePath).splitFasta(by:1, file:true)
+  seqs = channel.fromPath(params.inputFilePath).splitFasta(by:params.numberOfSplits, file:true)
   tRNAscan(seqs).collectFile(name: params.outputFileName) | addHeader
 }
 
