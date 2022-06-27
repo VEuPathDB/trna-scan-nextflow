@@ -13,3 +13,4 @@ Decription of nextflow configuration parameters:
 1. inputFilePath: Path to the input fasta file
 2. outputDir: Path to where you would like output files to be stored
 3. outputFileName: How you would like this output file to be stored
+4. numberOfSplits: How many sequences would you like to have sent to each process at a time
