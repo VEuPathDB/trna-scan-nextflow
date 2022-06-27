@@ -1,17 +1,29 @@
 nextflow.enable.dsl=2
 
 process tRNAscan {
-    publishDir params.outputDir, mode: 'copy'
     input:
-    tuple val(id), val (sequence) 
+    path 'subset.fa'
     output:
-    path '*.txt'
+    path 'subset.scanned'
     """
-    echo -e '>$id\n$sequence' > subset.fa
-    tRNAscan-SE subset.fa -o "$id"_scanned.txt 
+    tRNAscan-SE subset.fa -o subset.scanned 
+    sed -i '1,3d' subset.scanned
     """
 }
 
-workflow {
-  channel.fromPath(params.inputFilePath).splitFasta(by:1, record: [id: true, sequence: true]) | tRNAscan
+process addHeader {
+  publishDir params.outputDir, mode: 'copy', saveAs: {filename -> params.outputFileName}
+  input:
+  path 'subset.scanned_noheader'
+  output:
+  path 'header.txt'
+  """
+  echo -e "Sequence\t\ttRNA\tBounds\ttRNA\tAnti\tIntron\tBounds\tInf\nName\t\ttRNA #\tBegin\tEnd\tType\tCodon\tBegin\tEnd\tScore\tNote\t\n--------\t------\t-----\t------\t----\t-----\t-----\t----\t------\t------" | cat - subset.scanned_noheader > header.txt
+  """
 }
+
+workflow {
+  seqs = channel.fromPath(params.inputFilePath).splitFasta(by:1, file:true)
+  tRNAscan(seqs).collectFile(name: params.outputFileName) | addHeader
+}
+
