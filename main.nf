@@ -11,7 +11,6 @@ process tRNAscan {
 }
 
 workflow {
-  seqs = channel.fromPath(params.inputFilePath).splitFasta(by:params.fastaSubsetSize, file:true)
-  tRNAscan(seqs).collectFile(name: params.outputFileName, skip: 3, keepHeader: true, storeDir: params.outputDir)
+  channel.fromPath(params.inputFilePath).splitFasta(by:params.fastaSubsetSize, file:true) | tRNAscan | collectFile(name: params.outputFileName, skip: 3, keepHeader: true, storeDir: params.outputDir)
 }
 
