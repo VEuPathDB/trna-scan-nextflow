@@ -25,4 +25,8 @@ RUN wget http://trna.ucsc.edu/software/trnascan-se-2.0.5.tar.gz \
   && mv tRNAscan-SE /usr/local/bin/ \
   && cd /usr/local/bin/ chmod +x tRNAscan-SE
 
+COPY /bin/* /usr/bin/
+
+RUN cd /usr/bin/ && chmod +x fixheader.pl
+
 WORKDIR /work

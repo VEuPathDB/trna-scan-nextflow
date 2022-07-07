@@ -10,7 +10,18 @@ process tRNAscan {
     """
 }
 
+process fixHeader {
+  publishDir params.outputDir, saveAs: {filename->params.outputFile}
+  input:
+  path 'fileWithHeader.txt'
+  output:
+  path 'datafile'
+  """
+  fixheader.pl
+  """
+}
+
 workflow {
-  channel.fromPath(params.inputFilePath).splitFasta(by:params.fastaSubsetSize, file:true) | tRNAscan | collectFile(name: params.outputFileName, skip: 3, keepHeader: true, storeDir: params.outputDir)
+  channel.fromPath(params.inputFilePath).splitFasta(by:params.fastaSubsetSize, file:true) | tRNAscan | collectFile() | fixHeader
 }
 
