@@ -1,21 +1,27 @@
 nextflow.enable.dsl=2
 
 process tRNAscan {
-    input:
+  input:
     path 'subset.fa'
-    output:
+
+  output:
     path 'subset.scanned'
-    """
-    tRNAscan-SE subset.fa -o subset.scanned 
-    """
+
+  """
+  tRNAscan-SE subset.fa \
+    -o subset.scanned 
+  """
 }
 
 process fixHeader {
   publishDir params.outputDir, saveAs: {filename->params.outputFile}
+
   input:
-  path 'fileWithHeader.txt'
+    path 'fileWithHeader.txt'
+
   output:
-  path 'datafile'
+    path 'datafile'
+
   """
   fixheader.pl
   """
