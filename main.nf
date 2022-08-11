@@ -1,40 +1,37 @@
+#!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
-process tRNAscan {
-  input:
-    path 'subset.fa'
 
-  output:
-    path 'subset.scanned'
+//--------------------------------------------------------------------------
+// Param Checking
+//--------------------------------------------------------------------------
 
-  script:
-    """
-    tRNAscan-SE subset.fa \
-      -o subset.scanned 
-    """
+if(!params.fastaSubsetSize) {
+  throw new Exception("Missing params.fastaSubsetSize")
 }
 
-process fixHeader {
-  publishDir params.outputDir, saveAs: {filename->params.outputFile}
-
-  input:
-    path 'fileWithHeader.txt'
-
-  output:
-    path 'datafile'
-
-  script:
-    """
-    fixheader.pl
-    """
+if(params.inputFilePath) {
+  seqs = Channel.fromPath(params.inputFilePath)
+    .splitFasta(by:params.fastaSubsetSize, file:true)
 }
+else {
+  throw new Exception("Missing params.inputFilePath")
+}
+
+
+//--------------------------------------------------------------------------
+// Includes
+//--------------------------------------------------------------------------
+
+include { tRNAScan } from './modules/tRNAScan.nf'
+
+//--------------------------------------------------------------------------
+// Main Workflow
+//--------------------------------------------------------------------------
 
 
 workflow {
-  channel.fromPath(params.inputFilePath)
-    .splitFasta(by:params.fastaSubsetSize, file:true) \
-      | tRNAscan \
-      | collectFile() \
-      | fixHeader
-}
 
+  tRNAScan(seqs)
+
+}
