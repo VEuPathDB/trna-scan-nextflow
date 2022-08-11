@@ -7,10 +7,11 @@ process tRNAscan {
   output:
     path 'subset.scanned'
 
-  """
-  tRNAscan-SE subset.fa \
-    -o subset.scanned 
-  """
+  script:
+    """
+    tRNAscan-SE subset.fa \
+      -o subset.scanned 
+    """
 }
 
 process fixHeader {
@@ -22,12 +23,18 @@ process fixHeader {
   output:
     path 'datafile'
 
-  """
-  fixheader.pl
-  """
+  script:
+    """
+    fixheader.pl
+    """
 }
 
+
 workflow {
-  channel.fromPath(params.inputFilePath).splitFasta(by:params.fastaSubsetSize, file:true) | tRNAscan | collectFile() | fixHeader
+  channel.fromPath(params.inputFilePath)
+    .splitFasta(by:params.fastaSubsetSize, file:true) \
+      | tRNAscan \
+      | collectFile() \
+      | fixHeader
 }
 
