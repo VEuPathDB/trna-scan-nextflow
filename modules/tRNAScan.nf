@@ -13,6 +13,7 @@ process runtRNAScan {
     template 'runtRNAScan.bash'
 }
 
+
 process fixHeader {
   publishDir params.outputDir, saveAs: {filename->params.outputFile}
 
@@ -26,11 +27,15 @@ process fixHeader {
     template 'fixHeader.bash'
 }
 
+
 workflow tRNAScan {
+
   take:
     seqs
+
   main:
+
     runtRNAScan(seqs) \
-      | collectFile() \
-      | fixHeader
+        | collectFile() \
+        | fixHeader
 }
