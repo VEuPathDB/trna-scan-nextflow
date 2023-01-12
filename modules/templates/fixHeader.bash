@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-fixheader.pl
+fixheader.pl -inFile $fileWithHeader

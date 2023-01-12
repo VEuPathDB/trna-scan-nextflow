@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-tRNAscan-SE subset.fa \
+tRNAscan-SE $subsetFasta \
   -o subset.scanned 

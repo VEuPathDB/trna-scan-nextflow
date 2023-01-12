@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 process runtRNAScan {
   input:
-    path 'subset.fa'
+    path 'subsetFasta'
 
   output:
     path 'subset.scanned'
@@ -18,7 +18,7 @@ process fixHeader {
   publishDir params.outputDir, saveAs: {filename->params.outputFile}
 
   input:
-    path 'fileWithHeader.txt'
+    path fileWithHeader
 
   output:
     path 'datafile'
