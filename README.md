@@ -1,5 +1,21 @@
 # Nextflow Conversion of tRNAScanTask.pm
 
+***<p align=center>tRNAScan</p>***  
+```mermaid
+flowchart TD
+    p0((Channel.fromPath))
+    p1([splitFasta])
+    p2[tRNAScan:runtRNAScan]
+    p3([collectFile])
+    p4[tRNAScan:fixHeader]
+    p5(( ))
+    p0 --> p1
+    p1 -->|seqs| p2
+    p2 --> p3
+    p3 --> p4
+    p4 --> p5
+```
+
 Decription of nextflow configuration parameters:
 | param         | value type        | description  |
 | ------------- | ------------- | ------------ |
