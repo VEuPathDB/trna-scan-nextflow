@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 process runtRNAScan {
   input:
-    path 'subsetFasta'
+    path subsetFasta
 
   output:
     path 'subset.scanned'
