@@ -1,8 +1,9 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
-
 process runtRNAScan {
+  container = 'veupathdb/trnascan:latest'
+  
   input:
     path subsetFasta
 
@@ -15,6 +16,8 @@ process runtRNAScan {
 
 
 process fixHeader {
+  container = 'veupathdb/trnascan:latest'
+
   publishDir params.outputDir, saveAs: {filename->params.outputFile}
 
   input:
