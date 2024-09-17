@@ -18,7 +18,7 @@ process runtRNAScan {
 process fixHeader {
   container = 'veupathdb/trnascan:latest'
 
-  publishDir params.outputDir, saveAs: {filename->params.outputFile}
+  publishDir params.outputDir, saveAs: {filename->params.outputFile}, mode: 'copy'
 
   input:
     path fileWithHeader
