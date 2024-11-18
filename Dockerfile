@@ -13,13 +13,13 @@ RUN apt-get install -y \
 
 # Setting Up
 
-WORKDIR /usr/local
+WORKDIR /usr
 
 RUN wget https://github.com/UCSC-LoweLab/tRNAscan-SE/archive/refs/tags/v2.0.12.tar.gz \
   && tar -zxvf v2.0.12.tar.gz \
   && rm v2.0.12.tar.gz \
     && cd tRNAscan-SE-2.0.12 \
-  && ./configure \
+  && ./configure --prefix /usr \
   && make \
   && make install
 
