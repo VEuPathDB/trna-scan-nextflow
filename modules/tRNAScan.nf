@@ -5,40 +5,46 @@ process runtRNAScan {
   container = 'veupathdb/trnascan:latest'
   
   input:
-    path subsetFasta
+  path subsetFasta
 
   output:
-    path 'subset.scanned'
+  path (params.outputFileName), emit: tab
+  path ('subset.gff'), emit: gff
 
   script:
     template 'runtRNAScan.bash'
 }
 
 
-process fixHeader {
-  container = 'veupathdb/trnascan:latest'
+process indexGff {
+  container = 'biocontainers/tabix:v1.9-11-deb_cv1'
 
-  publishDir params.outputDir, saveAs: {filename->params.outputFile}, mode: 'copy'
+  publishDir params.outputDir, mode: 'copy'
 
   input:
-    path fileWithHeader
+    path gff
+    val outputFileName
 
   output:
-    path 'datafile'
+    path '*.gz'
+    path '*.gz.tbi'
 
   script:
-    template 'fixHeader.bash'
+  """
+  sort -k1,1 -k4,4n -k3,3r $gff > ${outputFileName}
+  bgzip ${outputFileName}
+  tabix -p gff ${outputFileName}.gz
+  """
 }
 
 
 workflow tRNAScan {
 
   take:
-    seqs
+  seqs
 
   main:
-
-    runtRNAScan(seqs) \
-        | collectFile() \
-        | fixHeader
+  trnascanResults = runtRNAScan(seqs)
+  trnascanResults.tab.collectFile(keepHeader: true, skip: 3, storeDir: params.outputDir)
+  indexGff(trnascanResults.gff.collectFile(keepHeader: false, skip: 1), params.outputGFFName);
 }
