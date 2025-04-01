@@ -2,7 +2,7 @@
 nextflow.enable.dsl=2
 
 process runtRNAScan {
-  container = 'veupathdb/trnascan:v1.0.0'
+  container = 'veupathdb/trnascan:1.0.0'
   
   input:
   path subsetFasta
