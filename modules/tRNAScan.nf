@@ -2,7 +2,7 @@
 nextflow.enable.dsl=2
 
 process runtRNAScan {
-  container = 'veupathdb/trnascan:1.0.0'
+  container 'veupathdb/trnascan:1.0.0'
   
   input:
   path subsetFasta
@@ -17,7 +17,7 @@ process runtRNAScan {
 
 
 process indexGff {
-  container = 'biocontainers/tabix:v1.9-11-deb_cv1'
+  container 'biocontainers/tabix:v1.9-11-deb_cv1'
 
   publishDir params.outputDir, mode: 'copy'
 
