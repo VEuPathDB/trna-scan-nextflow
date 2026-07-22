@@ -63,13 +63,19 @@ process mergeTab {
 
   script:
   """
-  cat <<'EOF' > merged.tab
-Sequence\ttRNA\tBounds\ttRNA\tAnti\tIntron Bounds\tInf\tHMM\t2'Str\tIsotype\tIsotype\t
-Name\ttRNA#\tBegin\tEnd\tType\tCodon\tBegin\tEnd\tScore\tScore\tScore\tCM\tScore\tNote
---------\t------\t-----\t------\t----\t-----\t-----\t----\t------\t-----\t-----\t-------\t-------\t------
-EOF
-
+  # Take the 3-line header from the first chunk so the column layout matches
+  # tRNAscan-SE's real output exactly. A hand-written header previously dropped
+  # the empty field in row 1 (real row1 has 13 tab-separated fields, an empty
+  # field 2 from the double-tab after "Sequence"), which shifted the Anti/score
+  # columns and broke EukHighConfidenceFilter's column parsing.
+  # Every chunk emits the full 3-line header even with zero hits, so the first
+  # chunk is a safe header source; only data rows (line 4+) are appended.
+  first=1
   for f in ${tabFiles}; do
+    if [ "\$first" -eq 1 ]; then
+      head -3 \$f > merged.tab
+      first=0
+    fi
     tail -n +4 \$f >> merged.tab
   done
   """
