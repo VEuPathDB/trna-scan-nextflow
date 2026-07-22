@@ -226,15 +226,9 @@ process filterGff {
 
   script:
   """
-  awk 'NR>3 {
-    start = (\$3 < \$4) ? \$3 : \$4
-    end   = (\$3 < \$4) ? \$4 : \$3
-    print \$1"\t"start"\t"end
-  }' ${retainedTab} > hc_coords.txt
-
-  awk 'NR==FNR {coords[\$1"\t"\$2"\t"\$3]=1; next}
-       /^#/ {print; next}
-       {if (coords[\$1"\t"\$4"\t"\$5]) print}' hc_coords.txt ${mergedGff} > filtered.gff
+  awk 'NR==FNR { if (FNR>3) ids[\$1".trna"\$2]=1; next }
+       /^#/ { print; next }
+       { if (match(\$9, /[A-Za-z0-9_.]+[.]trna[0-9]+/) && (substr(\$9,RSTART,RLENGTH) in ids)) print }' ${retainedTab} ${mergedGff} > filtered.gff
   """
 }
 
