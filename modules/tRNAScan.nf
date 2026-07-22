@@ -63,20 +63,19 @@ process mergeTab {
 
   script:
   """
-  # Take the 3-line header from the first chunk so the column layout matches
-  # tRNAscan-SE's real output exactly. A hand-written header previously dropped
-  # the empty field in row 1 (real row1 has 13 tab-separated fields, an empty
-  # field 2 from the double-tab after "Sequence"), which shifted the Anti/score
-  # columns and broke EukHighConfidenceFilter's column parsing.
-  # Every chunk emits the full 3-line header even with zero hits, so the first
-  # chunk is a safe header source; only data rows (line 4+) are appended.
-  first=1
+  # tRNAscan-SE writes a 0-byte file for a sequence with zero tRNAs. Take the
+  # 3-line header from the first NON-EMPTY chunk (all hit-bearing chunks share
+  # the identical header); empty chunks contribute no data rows.
+  # A hand-written header previously dropped the empty field in row 1 (real
+  # row1 has 13 tab-separated fields, an empty field 2 from the double-tab
+  # after "Sequence"), which shifted the Anti/score columns and broke
+  # EukHighConfidenceFilter's column parsing.
+  : > merged.tab
   for f in ${tabFiles}; do
-    if [ "\$first" -eq 1 ]; then
-      head -3 \$f > merged.tab
-      first=0
-    fi
-    tail -n +4 \$f >> merged.tab
+    if [ -s "\$f" ]; then head -3 "\$f" > merged.tab; break; fi
+  done
+  for f in ${tabFiles}; do
+    if [ -s "\$f" ]; then tail -n +4 "\$f" >> merged.tab; fi
   done
   """
 }
