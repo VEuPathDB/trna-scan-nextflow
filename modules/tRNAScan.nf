@@ -182,8 +182,9 @@ process strictFilter {
 }
 
 // ---------------------------------------------------------------------------
-// Simple filter for small genomes (applyHighConfFilter = false)
-// Still uses $NF for the note field to handle --detail -H column layout.
+// Simple filter for small genomes (applyHighConfFilter = false):
+// drop pseudogenes and low-scoring hits. GFF join is delegated to filterGff.
+// Uses $NF for the note field to handle the --detail -H column layout.
 // ---------------------------------------------------------------------------
 process simpleFilter {
   container 'veupathdb/trnascan:1.0.0'
@@ -191,11 +192,9 @@ process simpleFilter {
 
   input:
   path mergedTab
-  path mergedGff
 
   output:
   path 'tRNAScan.out', emit: tab
-  path 'filtered.gff', emit: gff
 
   script:
   """
@@ -207,12 +206,31 @@ process simpleFilter {
   ' ${mergedTab} >> tRNAScan.out
 
   echo "Retained \$(awk 'NR>3' tRNAScan.out | wc -l) tRNAs after simple filtering" >&2
+  """
+}
 
+// ---------------------------------------------------------------------------
+// Filter the merged GFF to the coordinates retained in the filtered .out.
+// Shared by both the strict (EukHCF) and simple filter paths.
+// Strand is normalized to min..max to match GFF start<end convention.
+// ---------------------------------------------------------------------------
+process filterGff {
+  publishDir params.outputDir, mode: 'copy', pattern: 'filtered.gff'
+
+  input:
+  path retainedTab
+  path mergedGff
+
+  output:
+  path 'filtered.gff'
+
+  script:
+  """
   awk 'NR>3 {
     start = (\$3 < \$4) ? \$3 : \$4
     end   = (\$3 < \$4) ? \$4 : \$3
     print \$1"\t"start"\t"end
-  }' tRNAScan.out > hc_coords.txt
+  }' ${retainedTab} > hc_coords.txt
 
   awk 'NR==FNR {coords[\$1"\t"\$2"\t"\$3]=1; next}
        /^#/ {print; next}
@@ -265,13 +283,14 @@ workflow tRNAScan {
   mergedSs  = mergeSs(trnascanResults.ss.collect())
   mergedGff = mergeGff(trnascanResults.gff.collect())
 
-  // Step 4: Filter
+  // Step 4: Filter (strict = EukHighConfidenceFilter, simple = score/pseudo)
   if (params.applyHighConfFilter) {
-    filteredResults = strictFilter(mergedTab, mergedGff)
+    filtered = eukHighConfidenceFilter(mergedTab, mergedSs)
   } else {
-    filteredResults = simpleFilter(mergedTab, mergedGff)
+    filtered = simpleFilter(mergedTab)
   }
 
-  // Step 5: Index the filtered GFF (consistent with tRNAScan.out)
-  indexGff(filteredResults.gff, params.outputGFFName)
+  // Step 5: Sync GFF to the retained set, then index
+  filteredGff = filterGff(filtered.tab, mergedGff)
+  indexGff(filteredGff, params.outputGFFName)
 }
