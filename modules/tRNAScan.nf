@@ -121,6 +121,38 @@ process mergeGff {
 }
 
 // ---------------------------------------------------------------------------
+// High-confidence filter using tRNAscan-SE's bundled EukHighConfidenceFilter.
+// Run in tag-only mode (no -r) so the full tagged output and the .log category
+// breakdown survive for diagnosing count gaps; then retain only the
+// "high confidence set". The tag is three words, so the match is LINE-LEVEL,
+// not $NF (which would only see "set").
+// ---------------------------------------------------------------------------
+process eukHighConfidenceFilter {
+  container 'veupathdb/trnascan:1.0.0'
+  publishDir params.outputDir, mode: 'copy', pattern: 'tRNAScan.out'
+  publishDir params.outputDir, mode: 'copy', pattern: 'hiConf.log'
+
+  input:
+  path mergedTab
+  path mergedSs
+
+  output:
+  path 'tRNAScan.out', emit: tab
+  path 'hiConf.log',   emit: log
+
+  script:
+  """
+  EukHighConfidenceFilter -i ${mergedTab} -s ${mergedSs} -o . -p hiConf \\
+      -c1 ${params.cmScore} -m1 ${params.ssScore} -e1 ${params.isoScore}
+
+  head -3 hiConf.out > tRNAScan.out
+  awk 'NR>3 && /high confidence set/' hiConf.out >> tRNAScan.out
+
+  echo "Retained \$(awk 'NR>3' tRNAScan.out | wc -l) tRNAs (high confidence set)" >&2
+  """
+}
+
+// ---------------------------------------------------------------------------
 // Apply a strict flag-based filter directly on the tabular output:
 //
 //   col5  = Type (anticodon-based isotype call)
