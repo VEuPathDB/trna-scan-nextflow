@@ -76,6 +76,45 @@ EOF
 }
 
 // ---------------------------------------------------------------------------
+// Concatenate per-chunk secondary-structure files into one .ss file.
+// EukHighConfidenceFilter cross-keys .ss records (by sequence name) against the
+// merged tabular output, so it needs the whole set in one file.
+// ---------------------------------------------------------------------------
+process mergeSs {
+  input:
+  path ssFiles, stageAs: '*.ss'
+
+  output:
+  path 'merged.ss'
+
+  script:
+  """
+  cat ${ssFiles} > merged.ss
+  """
+}
+
+// ---------------------------------------------------------------------------
+// Merge per-chunk GFF3 with a single clean header.
+// Replaces collectFile(skip:1), which stripped only one line per chunk and left
+// duplicate/renumbered ## header lines interleaved in the output.
+// ---------------------------------------------------------------------------
+process mergeGff {
+  input:
+  path gffFiles, stageAs: '*.gff'
+
+  output:
+  path 'merged.gff'
+
+  script:
+  """
+  echo '##gff-version 3' > merged.gff
+  for f in ${gffFiles}; do
+    grep -v '^#' \$f >> merged.gff || true
+  done
+  """
+}
+
+// ---------------------------------------------------------------------------
 // Apply a strict flag-based filter directly on the tabular output:
 //
 //   col5  = Type (anticodon-based isotype call)
@@ -221,10 +260,10 @@ workflow tRNAScan {
   // Step 2: Run tRNAscan-SE on each chunk
   trnascanResults = runtRNAScan(maskedSeqs.masked)
 
-  // Step 3: Merge outputs
-  // mergeTab uses explicit header to avoid collectFile(keepHeader:true) bug
+  // Step 3: Merge outputs (tab + ss + gff), each with correct header handling
   mergedTab = mergeTab(trnascanResults.tab.collect())
-  mergedGff = trnascanResults.gff.collectFile(name: 'merged.gff', keepHeader: false, skip: 1)
+  mergedSs  = mergeSs(trnascanResults.ss.collect())
+  mergedGff = mergeGff(trnascanResults.gff.collect())
 
   // Step 4: Filter
   if (params.applyHighConfFilter) {
