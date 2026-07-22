@@ -2,36 +2,27 @@
 nextflow.enable.dsl=2
 
 // ---------------------------------------------------------------------------
-// Optional RepeatMasker hard-masking step
-// Only runs when params.applyRepeatMask = true
-// Uses dfam/tetools container which bundles RepeatMasker + full Dfam library
-// Hard-masking (N) eliminates tRNA-derived SINE tandem arrays before tRNAscan-SE
-// sees them, which is the only reliable way to handle large repeat-rich genomes
-// like A. americanum (~70-80% repeat content)
+// Convert soft-masked sequence to hard-masked sequence
+// Input genomes are already soft-masked (repeats in lowercase); tRNAscan-SE
+// ignores case, so soft masking alone has no effect. Converting lowercase to N
+// hard-masks those regions, keeping tRNA-derived SINE tandem arrays from
+// flooding the output on large repeat-rich genomes.
+//
+// This is a pure per-record transform, so it runs on each FASTA chunk
+// independently (no need to see the whole genome at once).
 // ---------------------------------------------------------------------------
-process repeatMask {
-  container 'dfam/tetools:latest'
+process hardMask {
+  container 'quay.io/biocontainers/seqkit:2.13.0--he881be0_0'
 
   input:
-  path genome
+  path subsetFasta
 
   output:
-  path "${genome}.masked", emit: masked
+  path 'hardmasked.fa', emit: masked
 
   script:
   """
-  RepeatMasker \
-    -species "${params.repeatMaskSpecies}" \
-    -pa 8 \
-    -nolow \
-    -dir . \
-    ${genome}
-
-  # If no repeats were found RepeatMasker does not produce a .masked file
-  # Fall back to original so downstream processes always have input
-  if [ ! -f ${genome}.masked ]; then
-    cp ${genome} ${genome}.masked
-  fi
+  seqkit replace -s -p '[a-z]' -r N -w 0 ${subsetFasta} > hardmasked.fa
   """
 }
 
@@ -106,7 +97,7 @@ EOF
 // ---------------------------------------------------------------------------
 process strictFilter {
   container 'veupathdb/trnascan:1.0.0'
-  publishDir params.outputDir, mode: 'copy'
+  publishDir params.outputDir, mode: 'copy', pattern: 'tRNAScan.out'
 
   input:
   path mergedTab
@@ -157,7 +148,7 @@ process strictFilter {
 // ---------------------------------------------------------------------------
 process simpleFilter {
   container 'veupathdb/trnascan:1.0.0'
-  publishDir params.outputDir, mode: 'copy'
+  publishDir params.outputDir, mode: 'copy', pattern: 'tRNAScan.out'
 
   input:
   path mergedTab
@@ -222,27 +213,17 @@ workflow tRNAScan {
 
   main:
 
-  // Step 1: Optional RepeatMasking
-  // For large repeat-rich genomes (e.g. A. americanum, 3 Gb, ~75% repeats),
-  // hard-masking SINEs before tRNAscan-SE is the only reliable way to prevent
-  // tRNA-derived SINE tandem arrays from flooding the output.
-  // For small genomes this step is skipped entirely.
-  if (params.applyRepeatMask) {
-    // seqs is the whole genome file (unsplit) - mask it first, then split
-    maskedGenome = repeatMask(seqs)
-    chunkedSeqs  = maskedGenome.masked
-                    .splitFasta(by: params.fastaSubsetSize, file: true)
-  } else {
-    chunkedSeqs = seqs
-  }
+  // Step 1: Convert soft mask to hard mask on each chunk
+  // Repeats arrive lowercase (soft-masked); tRNAscan-SE ignores case, so we
+  // convert lowercase to N to actually hard-mask them before scanning.
+  maskedSeqs = hardMask(seqs)
 
   // Step 2: Run tRNAscan-SE on each chunk
-  trnascanResults = runtRNAScan(chunkedSeqs)
+  trnascanResults = runtRNAScan(maskedSeqs.masked)
 
   // Step 3: Merge outputs
   // mergeTab uses explicit header to avoid collectFile(keepHeader:true) bug
   mergedTab = mergeTab(trnascanResults.tab.collect())
-  mergedSs  = trnascanResults.ss.collectFile(name: 'merged.ss',  keepHeader: false, skip: 0)
   mergedGff = trnascanResults.gff.collectFile(name: 'merged.gff', keepHeader: false, skip: 1)
 
   // Step 4: Filter
