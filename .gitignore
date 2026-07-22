@@ -1,0 +1,5 @@
+# Nextflow run artifacts
+work/
+output/
+.nextflow/
+.nextflow.log*
