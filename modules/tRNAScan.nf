@@ -234,13 +234,17 @@ workflow tRNAScan {
 
   main:
 
-  // Step 1: Convert soft mask to hard mask on each chunk
-  // Repeats arrive lowercase (soft-masked); tRNAscan-SE ignores case, so we
-  // convert lowercase to N to actually hard-mask them before scanning.
-  maskedSeqs = hardMask(seqs)
+  // Step 1: Optionally hard-mask each chunk (soft-mask -> N). Off by default;
+  // EukHighConfidenceFilter is the primary repeat discriminator, and tRNAscan-SE
+  // ignores case, so without masking the soft-masked input is scanned as-is.
+  if (params.applyHardMask) {
+    scanSeqs = hardMask(seqs).masked
+  } else {
+    scanSeqs = seqs
+  }
 
   // Step 2: Run tRNAscan-SE on each chunk
-  trnascanResults = runtRNAScan(maskedSeqs.masked)
+  trnascanResults = runtRNAScan(scanSeqs)
 
   // Step 3: Merge outputs (tab + ss + gff), each with correct header handling
   mergedTab = mergeTab(trnascanResults.tab.collect())
