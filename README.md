@@ -39,7 +39,6 @@ Decription of nextflow configuration parameters:
 | ssScore | integer | EukHighConfidenceFilter secondary structure score cutoff (-m1, default 10). |
 | isoScore | integer | EukHighConfidenceFilter isotype-specific model score cutoff (-e1, default 70). |
 | minInfScore | integer | Infernal score cutoff for the simple filter path (default 60). |
-| maxForks | integer | Max concurrent processes in the docker profile, for local runs (default 2). |
 
 ### Get Started
   * Install Nextflow
