@@ -1,50 +1,61 @@
-THIS REPO IS 🚧 UNDER CONSTRUCTION 🚧 and NOT Used in ANY production CODE
-# Nextflow Conversion of tRNAScanTask.pm
+# trna-scan-nextflow
 
-***<p align=center>tRNAScan</p>***  
-```mermaid
-flowchart TD
-    p0((Channel.fromPath))
-    p1([splitFasta])
-    p2{applyHardMask}
-    p3[hardMask]
-    p4[runtRNAScan]
-    p5[mergeTab / mergeSs / mergeGff]
-    p6{applyHighConfFilter}
-    p7[eukHighConfidenceFilter]
-    p8[simpleFilter]
-    p9[filterGff]
-    p10[indexGff]
-    p0 --> p1 --> p2
-    p2 -->|true| p3 --> p4
-    p2 -->|false| p4
-    p4 --> p5 --> p6
-    p6 -->|true| p7
-    p6 -->|false| p8
-    p7 --> p9
-    p8 --> p9
-    p9 --> p10
+A Nextflow pipeline that scans genomic sequences for transfer RNA (tRNA) genes using tRNAscan-SE.
+
+## Overview
+
+This pipeline identifies tRNA genes in a genome assembly by running [tRNAscan-SE 2.0](http://trna.ucsc.edu/) over the input sequences and producing a consolidated results table, a filtered GFF3 of retained tRNA loci, and an indexed, bgzipped version of that GFF3. It is used within VEuPathDB's genome annotation workflows to generate tRNA gene predictions as part of building out a genome's structural annotation. The input FASTA is split into subsets so that scanning can be parallelized across many concurrent jobs, and the individual results are merged and then filtered down to a confident tRNA set.
+
+The pipeline supports two independent, optional steps around the core scan:
+
+- **Hard-masking** — soft-masked (lowercase) bases can optionally be converted to `N` before scanning, to exclude those regions from tRNAscan-SE entirely. Off by default, since tRNAscan-SE ignores case and the high-confidence filter is the primary defense against tRNA-derived repeat noise.
+- **Filtering** — after scanning, results are reduced to a confident tRNA set using one of two methods: tRNAscan-SE's bundled `EukHighConfidenceFilter` (strict, score/structure-based; the default), or a simpler filter that drops pseudogenes and low-scoring hits by Infernal score cutoff (useful for small genomes).
+
+## Requirements
+
+- [Nextflow](https://www.nextflow.io/) (DSL2)
+- A container engine: Docker or Singularity (profiles are provided for both)
+- Optionally, an LSF cluster (an `lsf` config profile is included for job submission)
+
+The pipeline uses the `veupathdb/trnascan:1.0.0` container image for tRNAscan-SE and `EukHighConfidenceFilter`, a `quay.io/biocontainers/seqkit` image for hard-masking, and a `biocontainers/tabix` image for indexing the final GFF3.
+
+## Usage
+
+```
+nextflow run VEuPathDB/trna-scan-nextflow \
+  -r main \
+  -entry tRNAScan \
+  --inputFilePath /path/to/genomicSeqs.fa \
+  --outputDir /path/to/output \
+  --fastaSubsetSize 25 \
+  -profile docker \
+  -resume
 ```
 
-Decription of nextflow configuration parameters:
-| param         | value type        | description  |
-| ------------- | ------------- | ------------ |
-| inputFilePath | string | Path to the input fasta file. |
-| outputDir | string | Path to where you would like output files to be stored. |
-| outputFileName | string | How you would like this output file to be stored. |
-| fastaSubsetSize | integer | How many sequences you would like to have sent to each process at a time. |
-| applyHardMask | boolean | Convert soft-masked (lowercase) bases to N before scanning. Default false; EukHighConfidenceFilter handles tRNA-derived repeats. |
-| applyHighConfFilter | boolean | true = EukHighConfidenceFilter (retain only the high confidence set); false = simple pseudo/score filter. |
-| cmScore | integer | EukHighConfidenceFilter domain/overall model score cutoff (-c1, default 50). |
-| ssScore | integer | EukHighConfidenceFilter secondary structure score cutoff (-m1, default 10). |
-| isoScore | integer | EukHighConfidenceFilter isotype-specific model score cutoff (-e1, default 70). |
-| minInfScore | integer | Infernal score cutoff for the simple filter path (default 60). |
+The pipeline has a single workflow entry point:
 
-### Get Started
-  * Install Nextflow
-    
-    `curl https://get.nextflow.io | bash`
-  
-  * Run the script
-    
-    `nextflow run VEuPathDB/tRNAScan -with-trace -c  <config_file> -r main`
+- **`tRNAScan`** (default) — splits the input FASTA into subsets, optionally hard-masks each subset, runs `tRNAscan-SE` on each subset, merges the per-subset tabular/secondary-structure/GFF results, filters down to a confident tRNA set, and produces a sorted, bgzipped, tabix-indexed GFF3 of the retained loci.
+
+## Key Parameters
+
+| Parameter | Description |
+| --- | --- |
+| `params.inputFilePath` | Path to the input FASTA file of genomic sequences to scan. |
+| `params.outputDir` | Directory where the final output files are published. |
+| `params.outputFileName` | File name for the published tabular tRNA report (default: `output_scanned.txt`). |
+| `params.outputGFFName` | File name for the published, indexed GFF3 of retained tRNA loci (default: `output_scanned.gff`). |
+| `params.fastaSubsetSize` | Number of sequences to include in each FASTA subset sent to a single `tRNAscan-SE` process; controls the degree of parallelism. |
+| `params.applyHardMask` | If `true`, converts soft-masked (lowercase) bases to `N` before scanning. Default `false`. |
+| `params.applyHighConfFilter` | If `true` (default), filters with `EukHighConfidenceFilter` (retains only the "high confidence set"). If `false`, uses the simpler score/pseudogene filter instead — better suited to small genomes. |
+| `params.minInfScore` | Infernal score cutoff used by the simple filter path when `applyHighConfFilter` is `false` (default `60`). |
+| `params.cmScore` | `EukHighConfidenceFilter` domain/overall model score cutoff, `-c1` (default `50`). |
+| `params.ssScore` | `EukHighConfidenceFilter` secondary structure score cutoff, `-m1` (default `10`). |
+| `params.isoScore` | `EukHighConfidenceFilter` isotype-specific model score cutoff, `-e1` (default `70`). |
+
+## Output
+
+Published to `params.outputDir`:
+
+- **`tRNAScan.out`** (name set by `params.outputFileName`) — a tab-delimited report of every retained tRNA, with columns for sequence name, tRNA number, genomic bounds, tRNA type, anticodon, intron bounds, and the Infernal (Inf) confidence score.
+- **`hiConf.log`** — emitted only when `applyHighConfFilter` is `true`; the `EukHighConfidenceFilter` category breakdown log, useful for diagnosing filtered-out counts.
+- **`<outputGFFName>.gz`** and **`<outputGFFName>.gz.tbi`** — a sorted, bgzipped GFF3 of the retained tRNA loci and its tabix index.
